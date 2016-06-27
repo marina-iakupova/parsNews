@@ -1,45 +1,112 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 27 19:58:17 2016
+
+@author: Марина
+"""
+
+# coding: utf8
 import urllib.request
 from bs4 import BeautifulSoup
 import re
 import string
 import bs4
-
 import codecs
-def open(path, mode):
-  return codecs.open(path, mode, 'utf-8')
+import pymorphy2
 
-#цикл для получения страниц новостей 1,2,3 и т.д.
-mainlinks='http://lentachel.ru/sections/transport'
-a=50
-b=0
-link=[]
+morph = pymorphy2.MorphAnalyzer()
 
-while a<=1000:
-    f = urllib.request.urlopen(mainlinks)
-    mainlinks='http://lentachel.ru/sections/transport/%s'%a
-    a=a+50
-    link+=[mainlinks]
-#получили массив ссылок на страницы с новостями
+class workWithLinks:
+	mainlinks='http://lentachel.ru/sections/transport'
+	withNumPage=250
+	numPage=0
+	
+	def getLinksPage (mainlinks):
+		while withNumPage<=5000:
+			link=[]
+			f = urllib.request.urlopen(mainlinks)
+			mainlinks='http://lentachel.ru/sections/transport/%s'%withNumPage
+			withNumPage=withNumPage+50
+			link+=[mainlinks]
+		return link
 
-#на каждой странице собираем ссылки на каждую новость
-b=0
-s=10
-while b<=19:#количество страниц с новостями
-    g = urllib.request.urlopen(link[b])
-    links = BeautifulSoup(g)
-    b=b+1
+	def getLinksOnPage(link, numPage):
+		g = urllib.request.urlopen(link[numPage])
+		links = BeautifulSoup(g)
+		for links in links.find_all('a'):
+			newlinks=links.get('href')
+		return newlinks
   
-    for links in links.find_all('a'):
-        newlinks=links.get('href') #получили список всех ссылок на странице
-        
-        pattern='http://lentachel.ru/articles/\d\d\d\d\d'
-        alllinks =re.findall(pattern, newlinks)#отфильтровали ссылки на нужные, занесли в переменную
+	def filtrLinks(newlinks):
+		pattern='http://lentachel.ru/articles/\d\d\d\d\d'
+		alllinks =re.findall(pattern, newlinks)
+		return alllinks
 
-        for alllinks in alllinks:
-            f = urllib.request.urlopen(alllinks)
-            content = BeautifulSoup(f)
-            date=content.find('div', 'date')
-            date=date.get_text()
+class workWithFiles:
+	nameFileNews=1
+
+	def openFile(path, mode):
+		return codecs.open(path, mode, 'utf-8')
+	
+
+class workWithText:
+	def getText(alllinks):
+		f = urllib.request.urlopen(alllinks)
+		content = BeautifulSoup(f)
+		date=content.find('div', 'date')
+		date=date.get_text()
+		return date
+	
+class redactText:
+		work_file='alltext.txt'
+
+		def openFile(work_file):
+			file = open(work_file,'r', encoding='utf-8')
+			try:
+				txt = file.read()
+				return txt       
+			finally:
+				file.close()
+			
+
+		def getDate(text):
+			regDate=re.compile(r'/([0-2]\d|3[01])\.(0\d|1[012])\.(\d{4})/')
+			date = re.search(regDate, text)
+			date=date.group()
+			if date:
+				return date
+			else:
+				print 'No match'
+
+		def getTime(text):
+			regDate=re.compile(r'^(\d\d:\d\d:\d\d(;|$)){4}(?<!;)$')
+			date = re.search(regDate, text)
+			date=date.group()
+			if date:
+				return date
+			else:
+				print 'No match'
+				
+		def getWordFromText(text):
+			p = re.compile("([a-zA-Z-а-яА-Я']+)")
+			res=p.findall(text)
+			return res
+	
+
+	
+	
+workWithLinks=wwl()
+workWithFiles=wwf()
+workWithText=wwt()
+	
+link+=wwl.getLinksPage(mainlinks)
+while numPage<=95:
+	newlinks=wwl.getLinksOnPage(link, numPage)
+	numPage=numPage+1
+	alllinks=wwl.filtrLinks(newlinks)
+	
+    for alllinks in alllinks:
+            date=wwt.getText(alllinks)
             f1 = open("all.txt", 'a')
             f1.write(date)
             f1.write(' ')
@@ -51,13 +118,27 @@ while b<=19:#количество страниц с новостями
                   if textall2!=-1:
                       text=textall2
                       text=text.get_text()
-                      f = open("D:/semestr/news/%s.txt"%s, 'a')#записываем текст всех новостей в файлики
-                      s=s+1
+                      f = wwf.openFile("C:/Python33/textmin/news/%s.txt"%nameFileNews, 'a')
+                      nameFileNews=nameFileNews+1
                       f.write(date)
                       f.write('\r\n')
                       f.write(text)
-                      f2= open("alltext.txt", 'a')#записываем текст всех новостей в один файл для быстрой обработки 
+                      f2= wwf.openFile("alltext.txt", 'a')
                       f2.write(text)
                       f2.write(' ')
                       f1.close
                       f2.close
+
+
+redactText=rt()
+
+txt=rt.openFile(work_file)
+
+date=rt.getDate(txt)
+print (date)
+
+time=rt.getTime(txt)
+print (time)
+
+res=rt.getWordFromText(txt)
+print (res)
